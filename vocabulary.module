@@ -38,7 +38,11 @@ function vocabulary_menu() {
   );
   return $items;
 }
-
+/* will not work, can't just target that path. 
+function vocabulary_path_alias_types() {
+  return array('taxonomy/%'=>t("Just vocabularies"));
+}
+*/
 function vocabulary_page($vocabulary) {
   drupal_set_title(check_plain($vocabulary->name));
     $page            = isset($_GET['page']) ? $_GET['page'] : 0;
@@ -282,7 +286,7 @@ function page_manager_vocabulary($vocabulary, $op = 'page') {
     ctools_include('context');
     ctools_include('context-task-handler');
     
-    $contexts = ctools_context_handler_get_task_contexts($task, '', array($vocabulary));
+    $contexts = ctools_context_handler_get_task_contexts($task, '', array($vocabulary->vid));
 
     if (empty($contexts)) {
       return drupal_not_found();
@@ -298,7 +302,7 @@ function page_manager_vocabulary($vocabulary, $op = 'page') {
         'weight' => -10,
       ));
     }
-    $output = ctools_context_handler_render($task, '', $contexts, array($vocabulary, $op));
+    $output = ctools_context_handler_render($task, '', $contexts, array($vocabulary->vid, $op));
     if ($output !== FALSE) {
       return $output;
     }
