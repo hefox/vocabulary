@@ -52,6 +52,130 @@ function vocabulary_page($vocabulary) {
 
 }
 
+/* token stuff */
+/*
+ * Implementation of hook_token_values
+ */
+
+function vocabulary_token_values($type, $object = NULL) {
+
+  $values = array();
+
+  switch ($type) {
+    case 'vocabulary':
+      $values['vid'] = $object->vid;
+      $values['vocab'] = check_plain($object->name);
+      $values['vocab-raw'] = $object->name;
+      break;
+  }
+  return $values;
+}
+/*
+ * Implementation of hook_token_list
+ */
+function vocabulary_token_list($type = 'all') {
+  $tokens = array();
+    if ($type == 'vocabulary' || $type == 'all') {
+      $tokens['vocabulary']['vid'] = t('Vocabulary vid.');
+      $tokens['vocabulary']['vocab-raw'] = t('Raw vocabulary name.');
+      $tokens['vocabulary']['vocab'] = t('Vocabulary name.');
+    }
+
+  return $tokens;
+}
+/*
+ * Pathauto stuff
+ */
+/*
+ * Implementation of hook_pathauto
+ */
+function vocabulary_pathauto($op) {
+  switch ($op) {
+    case 'settings':
+      $settings = array();
+      $settings['module'] = 'vocabulary';
+      $settings['token_type'] = 'vocabulary';
+      $settings['groupheader'] = t('Vocabulary path settings');
+      $settings['patterndefault'] = t('category/[vocab-raw]');
+      $patterns = token_get_list('vocabulary');
+      foreach ($patterns as $type => $pattern_set) {
+        if ($type != 'global') {
+          foreach ($pattern_set as $pattern => $description) {
+            $settings['placeholders']['['. $pattern .']'] = $description;
+          }
+        }
+      }
+      $settings['supportsfeeds'] = '0/feed';
+      $settings['bulkname'] = t('Bulk generate aliases for vocabularies that are not aliased');
+      $settings['bulkdescr'] = t('Generate aliases for all existing vocabularies which do not already have aliases.');
+
+      return (object) $settings;
+    default:
+      break;
+  }
+}
+
+
+/**
+ * Generate aliases for all nodes without aliases.
+ */
+function vocabulary_pathauto_bulkupdate() {
+  // From all node types, only attempt to update those with patterns
+  // If there's a default pattern we assume all types might be updated.
+  $pattern = trim(variable_get('pathauto_vocabulary_pattern', '')) ;
+  if (!$pattern) return;
+  $vocabularies =  taxonomy_get_vocabularies();
+  $placeholders = array();
+  $count = 0;
+  foreach($vocabularies as $vocabulary) {
+    $placeholders = pathauto_get_placeholders('vocabulary', $vocabulary);
+    if (pathauto_create_alias('vocabulary', 'bulkupdate', $placeholders, "taxonomy/$vocabulary->vid", $vocabulary->vid)) {
+      $count++;
+    }
+   } 
+
+  drupal_set_message(format_plural($count,
+    'Bulk generation of vocabularies completed, one alias generated.',
+    'Bulk generation of vocabularies completed, @count aliases generated.'));
+}
+
+/**
+ * Implementation of hook_taxonomy().
+ */
+function vocabulary_taxonomy($op, $type, $object = NULL) {
+  switch ($type) {
+    case 'vocabulary':
+      switch ($op) {
+        case 'insert':
+        case 'update':
+          _pathauto_include();
+          // Use the category info to automatically create an alias
+          $vocabulary = (object) $object;
+          if ($vocabulary->name) {
+            $placeholders = pathauto_get_placeholders('vocabulary', $vocabulary);
+            pathauto_create_alias('vocabulary', $op, $placeholders, "taxonomy/$vocabulary->vid", $vocabulary->vid);
+          }
+
+          break;
+        case 'delete':
+          // If the category is deleted, remove the path aliases
+          $vocabulary = (object) $object;
+          path_set_alias('taxonomy/'. $vocabulary->vid);
+          path_set_alias('taxonomy/'. $vocabulary->vid .'/0/feed');
+          break;
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+
+/*
+Below all the junk to associate the page with ctools
+*/
 function vocabulary_page_manager_tasks() {
   return array(
     'vocabulary_view' => array(
