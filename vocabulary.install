@@ -1,0 +1,5 @@
+<?php
+
+function vocabulary_install() {
+  db_query("UPDATE {system} SET weight=-1 where name='vocabulary'");
+}

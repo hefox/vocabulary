@@ -1,0 +1,4 @@
+name = Vocabulary
+description = Additional vocabulary stuff
+core = 6.x
+dependancies[] = taxonomy 
