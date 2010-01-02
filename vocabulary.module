@@ -1,5 +1,6 @@
 <?php
 
+include('vocabulary.taxonomy_menu.inc');
 
 function vocabulary_views_api() {
   return array(
@@ -11,7 +12,8 @@ function vocabulary_views_api() {
 
 function vocabulary_menu() {
   $items['taxonomy/%taxonomy_vocabulary'] = array(
-    'title' => 'Vocabulary',
+    'title callback' => 'vocabulary_page_title',
+    'title arguments' => array(1),
     'page callback' => 'vocabulary_page',
     'page arguments' => array(1),
     'access arguments' => array('access content'),
@@ -25,7 +27,7 @@ function vocabulary_menu() {
     'access arguments' => array('access content'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  
+  $path = drupal_get_path('module', 'taxonomy');
   $items['taxonomy/%taxonomy_vocabulary/edit'] = array(
     'title' => 'Edit',
     'page callback' => 'taxonomy_admin_vocabulary_edit',
@@ -33,10 +35,24 @@ function vocabulary_menu() {
     'access arguments' => array('administer taxonomy'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'taxonomy.admin.inc',
-    'file path' => drupal_get_path('module', 'taxonomy'),
+    'file path' => $path,
     'weight' => 5,
   );
+ $items['taxonomy/%taxonomy_vocabulary/list'] = array(
+    'title' => 'List',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_overview_terms', 1),
+    'access arguments' => array('administer taxonomy'),
+    'type' => MENU_LOCAL_TASK,
+    'file path' => $path,
+    'file' => 'taxonomy.admin.inc',
+    'weight' => 10,
+
+  );
   return $items;
+}
+function vocabulary_page_title($vocabulary) {
+  return check_plain($vocabulary->name);
 }
 /* will not work, can't just target that path. 
 function vocabulary_path_alias_types() {
@@ -54,6 +70,17 @@ function vocabulary_page($vocabulary) {
     }
     return $output;
 
+}
+
+function vocabulary_form_taxonomy_form_vocabulary_alter(&$form, $form_state) {
+  if (arg(0) == 'taxonomy' && arg(2)=='edit') $form['#submit'][] =  'vocabulary_taxonomy_form_vocabulary';
+ 
+}
+
+function vocabulary_taxonomy_form_vocabulary($form, &$form_state) {
+  $form_state['values']['vid'];
+  $form_state['redirect'] = 'taxonomy/'.$form_state['values']['vid'];
+  return;
 }
 
 /* token stuff */
