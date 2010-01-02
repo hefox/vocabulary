@@ -51,6 +51,41 @@ function vocabulary_menu() {
   );
   return $items;
 }
+
+/*Allow for autocomplete to have multiple vocabularies*/
+function vocabulary_menu_alter(&$items) {
+  $items['taxonomy/autocomplete']['page callback'] = 'vocabulary_taxonomy_autocomplete';
+  unset($items['taxonomy/autocomplete']['file']);
+}
+
+function vocabulary_taxonomy_autocomplete($vid, $string = '') {
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  drupal_set_message($vid);
+  $array = drupal_explode_tags($string);
+  $vocabs = explode(" ",$vid);
+  // Fetch last tag
+  $last_string = trim(array_pop($array));
+  $matches = array();
+  if ($last_string != '') {
+    $args = $vocabs;
+    $args[] = $last_string ;
+    $result = db_query_range(db_rewrite_sql("SELECT t.tid, t.name FROM {term_data} t WHERE t.vid in (".db_placeholders($vocabs).") AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $args, 0, 10);
+
+    $prefix = count($array) ? implode(', ', $array) .', ' : '';
+
+    while ($tag = db_fetch_object($result)) {
+      $n = $tag->name;
+      // Commas and quotes in terms are special cases, so encode 'em.
+      if (strpos($tag->name, ',') !== FALSE || strpos($tag->name, '"') !== FALSE) {
+        $n = '"'. str_replace('"', '""', $tag->name) .'"';
+      }
+      $matches[$prefix . $n] = check_plain($tag->name);
+    }
+  }
+
+  drupal_json($matches);
+}
+
 function vocabulary_page_title($vocabulary) {
   return check_plain($vocabulary->name);
 }
