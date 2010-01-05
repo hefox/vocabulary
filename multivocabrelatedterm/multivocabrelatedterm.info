@@ -1,0 +1,4 @@
+name = Multi vocabulary related term
+description = Allows related terms from multiple vocabularies. 
+core = 6.x
+dependancies[] = taxonomy 

@@ -1,0 +1,55 @@
+<?php
+
+function multivocabrelatedterm_form_taxonomy_form_term_alter(&$form, $form_state) {
+  unset($form['advanced']['relations']);
+  $form['advanced']['relations'] = array(
+    '#type' =>'fieldset',
+    '#title' => 'Related terms',  
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+    );
+  foreach(taxonomy_get_vocabularies() as $vid => $info) {
+    $form['advanced']['relations'][$vid] = _taxonomy_term_checkboxes(t('Related %vocab',array('%vocab'=>$info->name)), $vid, array_keys(taxonomy_get_related($form['#term'] ['tid'])),$vid, NULL, 1, array($form['#term']['tid']));
+  }
+  if (is_array($form['#submit'] )) array_unshift($form['#submit'],
+    'multivocabrelatedterm_form_taxonomy_form_submit');
+  else $form['#submit'][] = 'multivocabrelatedterm_form_taxonomy_form_submit';
+  
+}
+
+function multivocabrelatedterm_form_taxonomy_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+  $relations = array();
+  foreach($values['relations'] as $vid => $terms) {
+    foreach(array_filter($terms) as $tid=>$tid) {
+      $relations[$tid]= $tid;
+    }
+  } 
+  $form_state['values']['relations'] = $relations ; 
+}
+
+function _taxonomy_term_checkboxes($title, $name, $value, $vocabulary_id, $description, $multiple, $exclude = array()) {
+  $tree = taxonomy_get_tree($vocabulary_id);
+  $options = array();
+
+  if ($blank) {
+    $options[''] = $blank;
+  }
+  if ($tree) {
+    foreach ($tree as $term) {
+      if (!in_array($term->tid, $exclude)) {
+        $options[$term->tid] = str_repeat('-', $term->depth) . $term->name;
+      }
+    }
+  }
+
+  return array('#type' => 'checkboxes',
+    '#title' => $title,
+    '#default_value' => $value,
+    '#options' => $options,
+    '#description' => $description,
+    '#multiple' => $multiple,
+    '#size' => $multiple ? min(9, count($options)) : 0,
+    '#weight' => -15,
+  );
+}
