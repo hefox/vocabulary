@@ -60,7 +60,6 @@ function vocabulary_menu_alter(&$items) {
 
 function vocabulary_taxonomy_autocomplete($vid, $string = '') {
   // The user enters a comma-separated list of tags. We only autocomplete the last tag.
-  drupal_set_message($vid);
   $array = drupal_explode_tags($string);
   $vocabs = explode(" ",$vid);
   // Fetch last tag
@@ -283,7 +282,7 @@ function vocabulary_page_manager_tasks() {
   
       // Allow this to be enabled or disabled:
       'disabled' => variable_get('vocabulary_disabled', TRUE),
-      'enable callback' => 'vocabulary_enable',
+      'enable callback' => 'page_manager_vocabulary_enable',
   
       'operations' => array(
         'settings' => array(
@@ -433,7 +432,7 @@ function vocabulary_admin_settings(&$form, $settings = array()) {
 /**
  * Callback to enable/disable the page from the UI.
  */
-function vocabulary_enable($cache, $status) {
+function page_manager_vocabulary_enable($cache, $status) {
   variable_set('vocabulary_disabled', $status);
 
   // Set a global flag so that the menu routine knows it needs

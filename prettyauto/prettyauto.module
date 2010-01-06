@@ -1,0 +1,108 @@
+<?php 
+
+
+
+function prettyauto_menu() {
+  $items['prettyauto/autocomplete'] = array(
+    'title' => 'Autocomplete taxonomy',
+    'page callback' => 'prettyauto_taxonomy_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+
+function prettyauto_taxonomy_autocomplete($key,$vid, $string = '') {
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  static $types;
+  if (!isset($types)) {
+    $types = module_invoke_all('prettyauto');
+  }
+  if (empty($types[$key])) {
+    include_once(drupal_get_path('module','taxonomy').'/taxonomy.pages.inc');
+    return taxonomy_autocomplete($vid,$string);
+  }
+  $info = $types[$key];
+  $array = drupal_explode_tags($string);
+  
+  $vocabs = explode(" ",$vid);
+  // Fetch last tag
+  $last_string = trim(array_pop($array));
+  $matches = array();
+  if ($last_string != '') {
+    $args = $vocabs;
+    $args[] = $last_string ;
+    $prefix = count($array) ? implode(', ', $array) .', ' : '';
+    if ($info['gather'] && function_exists($info['gather'])) {
+       $rows = call_user_function($info['gather'],array($vocabs,$string));
+    } else {
+      $result = db_query_range(db_rewrite_sql("SELECT t.* FROM {term_data} t WHERE t.vid in (".db_placeholders($vocabs).") AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $args, 0, 10);
+      $rows = array();
+    
+      while ($tag = db_fetch_object($result)) {
+        $rows[] = $tag;
+      }
+    }
+    foreach ($rows as $tag) {
+      $n = $tag->name;
+      // Commas and quotes in terms are special cases, so encode 'em.
+      if (strpos($tag->name, ',') !== FALSE || strpos($tag->name, '"') !== FALSE) {
+        $n = '"'. str_replace('"', '""', $tag->name) .'"';
+      }
+      if ($info['theme']) $matches[$prefix . $n] = theme($info['theme'],$tag);
+      else $matches[$prefix . $n] = check_plain($tag->name) ;
+      
+      if ($info['link']) $matches[$prefix . $n] .= ' - ' . prettyauto_taxonomy_link($tag);
+    }
+  }
+  drupal_json($matches);
+}
+
+function prettyauto_theme() {
+  return array(
+    'related_terms' => array(
+      'arguments' => array('tag' => NULL),
+    ),
+    'term_description' => array(
+      'arguments' => array('tag' => NULL),
+    ),
+  );
+}
+function prettyauto_prettyauto() {
+  return array(
+    'description' => array('theme'=>'term_description', 'link' => TRUE),
+    'related_terms' => array('theme'=>'related_terms', 'link' => TRUE)
+  );
+}
+function theme_term_description($tag) {
+  if ($tag->description) {
+    if (strlen($tag->description) > 35) $tag->description = substr($tag->description,0,35) . '...' ;
+    $tag->name .= ' - ' . $tag->description;    
+  }
+  return $tag->name ;
+}
+function prettyauto_taxonomy_link($tag) {
+  return  l('go',taxonomy_term_path($tag),array('attributes'=>array('class'=>'prettyauto-description','target'=>'_blank')));
+}
+function theme_related_terms($tag) {
+  $relate = taxonomy_get_related($tag->tid);
+  $related = array();
+  foreach($relate as $rtag) {
+    $related[$rtag->vid][] = $rtag->name;
+  }
+  $vocabs = taxonomy_get_vocabularies();
+  $temp = array();
+  foreach($related as $vid => $tags) {
+    $temp[] = $vocabs[$vid]->name . ': ' .  implode(",",$tags) ; 
+  }
+  
+ 
+  if (count($temp) > 1) {
+    $tag->name .= ' ([' . implode("], [",$temp) . '])';
+  } elseif($temp) {
+    $tag->name .= ' (' . implode(", ",$temp) . ')';
+  }
+  return $tag->name;
+}
