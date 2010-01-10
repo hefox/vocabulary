@@ -34,17 +34,20 @@ function prettyauto_taxonomy_autocomplete($key,$vid, $string = '') {
   if ($last_string != '') {
     $args = $vocabs;
     $args[] = $last_string ;
+    $limit = variable_get('prettyauto_limit',15);
     $prefix = count($array) ? implode(', ', $array) .', ' : '';
     if ($info['gather'] && function_exists($info['gather'])) {
        $rows = call_user_function($info['gather'],array($vocabs,$string));
     } else {
-      $result = db_query_range(db_rewrite_sql("SELECT t.* FROM {term_data} t WHERE t.vid in (".db_placeholders($vocabs).") AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $args, 0, 10);
+      
+      $result = db_query_range(db_rewrite_sql("SELECT t.* FROM {term_data} t WHERE t.vid in (".db_placeholders($vocabs).") AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $args, 0, $limit);
       $rows = array();
     
       while ($tag = db_fetch_object($result)) {
         $rows[] = $tag;
-      }
+      }     
     }
+    if ($limit - count($rows) > 0) drupal_alter('prettyautorows',$rows,$vocabs,$last_string);
     foreach ($rows as $tag) {
       $n = $tag->name;
       // Commas and quotes in terms are special cases, so encode 'em.
@@ -56,6 +59,7 @@ function prettyauto_taxonomy_autocomplete($key,$vid, $string = '') {
       
       if ($info['link']) $matches[$prefix . $n] .= ' - ' . prettyauto_taxonomy_link($tag);
     }
+    
   }
   drupal_json($matches);
 }

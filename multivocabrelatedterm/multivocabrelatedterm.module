@@ -2,14 +2,15 @@
 
 function multivocabrelatedterm_form_taxonomy_form_term_alter(&$form, $form_state) {
   unset($form['advanced']['relations']);
-  $form['advanced']['relations'] = array(
+  $form['relations'] = array(
     '#type' =>'fieldset',
     '#title' => 'Related terms',  
     '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
     '#tree' => TRUE,
     );
   foreach(taxonomy_get_vocabularies() as $vid => $info) {
-    $form['advanced']['relations'][$vid] = _taxonomy_term_checkboxes(t('Related %vocab',array('%vocab'=>$info->name)), $vid, array_keys(taxonomy_get_related($form['#term'] ['tid'])),$vid, NULL, 1, array($form['#term']['tid']));
+    $form['relations'][$vid] = _taxonomy_term_checkboxes(t('Related %vocab',array('%vocab'=>$info->name)), $vid, array_keys(taxonomy_get_related($form['#term'] ['tid'])),$vid, NULL, 1, array($form['#term']['tid']));
   }
   if (is_array($form['#submit'] )) array_unshift($form['#submit'],
     'multivocabrelatedterm_form_taxonomy_form_submit');
@@ -46,6 +47,7 @@ function _taxonomy_term_checkboxes($title, $name, $value, $vocabulary_id, $descr
   return array('#type' => 'checkboxes',
     '#title' => $title,
     '#default_value' => $value,
+    '#multicolumn' => array('width' => 4), /*in case multi column is enabled*/
     '#options' => $options,
     '#description' => $description,
     '#multiple' => $multiple,
