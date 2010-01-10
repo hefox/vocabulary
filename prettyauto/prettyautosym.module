@@ -1,0 +1,17 @@
+<?php
+
+function prettyautosym_prettyautorows_alter(&$rows,$vocabs,$last_string) {
+  $limit = variable_get('prettyauto_limit',15);
+  if (count($rows) >= $limit) return; 
+  $args = $vocabs;
+  $args[] = $last_string ;
+  if ($rows) {
+    foreach($rows as $tag) $args[] = $tag->tid;
+    $add =  "AND t.tid not in (". db_placeholders($rows).")";
+  }
+  $result = db_query_range(db_rewrite_sql("SELECT distinct t.tid, t.* FROM {term_data} t LEFT JOIN {term_synonym} s on t.tid = s.tid WHERE t.vid in (".
+    db_placeholders($vocabs).") AND LOWER(s.name) LIKE LOWER('%%%s%%')".$add, 't', 'tid'), $args, 0, $limit - count($rows));
+  while ($tag = db_fetch_object($result)) {
+     $rows[] = $tag;
+  }
+}
