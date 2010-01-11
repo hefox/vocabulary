@@ -55,3 +55,97 @@ function _taxonomy_term_checkboxes($title, $name, $value, $vocabulary_id, $descr
     '#weight' => -15,
   );
 }
+
+
+function multivocabrelatedterm_ctools_content_types() {
+  return array(
+    'taxonomy_related_by_vocab' => array(
+      'single' => TRUE,
+      'title' => t('List of related terms by vocabulary'),
+      'icon' => 'icon_term.png',
+      'description' => t('Terms related to an existing term displayed by vocabulary.'),
+      'required context' => new ctools_context_required(t('Term'), 'term'),
+      'edit form' => 'multivocabrelatedterm_content_type_edit_form',    
+      'render callback' => 'multivocabrelatedterm_content_type_render',
+      'category' => t('Taxonomy term'),
+      'defaults' => array('title' => '','vocabulary_path'=>1, 'vocabularies' => array(), 'list_type' => 'ul'),
+    ),
+  );
+}
+
+function multivocabrelatedterm_content_type_render($subtype, $conf, $panel_args, $context) {
+  $term = isset($context->data) ? drupal_clone($context->data) : NULL;
+  $block = new stdClass();
+  $block->module = 'term-list';
+
+  $options = ctools_admin_term_list_options();
+  if ($term) {
+    $block->subject = 'Related terms by vocabulary';
+    $block->delta = 'taxonomy_related_by_vocab';
+    $terms = taxonomy_get_related($term->tid);
+    if ($terms) {
+      foreach ($terms as $related) {
+           $items[$related->vid][$related->tid] = l($related->name, taxonomy_term_path($related), array('rel' => 'tag', 'title' => strip_tags($related->description)));
+      }
+      $allowed_vocabs = array_filter($conf['vocabularies']);
+      $use_vocab_path = $conf['vocabulary_path'] && module_exists('vocabulary');
+      foreach($items as $vid => $term_items) {
+        if ($allowed_vocabs && !in_array($vid,$allowed_vocabs)) continue ; 
+        $vocabulary = taxonomy_vocabulary_load($vid);
+        $block->content .= '<h2>'.
+            ($use_vocab_path? l(check_plain($vocabulary->name),'taxonomy/'.$vid):
+          check_plain($vocabulary->name))
+            .'</h2>'
+            .theme('item_list', $term_items, NULL, $conf['list_type']);
+      }
+    }
+  }
+  else {
+    $block->content = t('');
+    $block->delta = 'unknown';
+  }
+  return $block;
+}
+/**
+ * Returns an edit form for the custom type.
+ */
+function multivocabrelatedterm_content_type_edit_form(&$form, &$form_state) {
+  $conf = $form_state['conf'];
+    $vocabularies = taxonomy_get_vocabularies();
+    foreach ($vocabularies as $voc) {
+      $options[$voc->vid] = check_plain($voc->name);
+    }
+  $form['vocabularies'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Vocabularies'),
+    '#options' => $options,
+    '#default_value' => $conf['vocabularies'],
+    '#description' => t('which vocabularies to show when relations, leave unchecked for all.'),
+    '#prefix' => '<div class="clear-block no-float">',
+    '#suffix' => '</div>',
+  );
+  if (module_exists('vocabulary')) {
+    $form['vocabulary_path'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Link vocabulary to vocabulary page (provided by vocabulary module)'),
+      '#default_value' => $conf['vocabulary_path'],
+      '#prefix' => '<div class="clear-block no-float">',
+      '#suffix' => '</div>',
+    );
+  }
+
+  $form['list_type'] = array(
+    '#type' => 'select',
+    '#title' => t('List type'),
+    '#options' => array('ul' => t('Unordered'), 'ol' => t('Ordered')),
+    '#default_value' => $conf['list_type'],
+  );
+}
+
+function multivocabrelatedterm_content_type_edit_form_submit(&$form, &$form_state) {
+  // Copy everything from our defaults.
+  foreach (array_keys($form_state['plugin']['defaults']) as $key) {
+    $form_state['conf'][$key] = $form_state['values'][$key];
+  }
+}
+
