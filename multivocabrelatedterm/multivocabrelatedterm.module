@@ -1,4 +1,10 @@
 <?php
+function multivocabrelatedterm_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'multivocabrelatedterm'),
+  );
+}
 
 function multivocabrelatedterm_form_taxonomy_form_term_alter(&$form, $form_state) {
   unset($form['advanced']['relations']);
