@@ -1,0 +1,6 @@
+<?php
+
+function prettyauto_install() {
+  // run after vocab
+  db_query("UPDATE {system} SET weight=1 where name='prettyauto'");
+}
