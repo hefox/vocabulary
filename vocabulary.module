@@ -104,9 +104,8 @@ function vocabulary_page($vocabulary) {
     }
     
     
-    return $output . theme('pager', NULL, variable_get('default_nodes_main', 10));
-;
-
+    if ($output) return $output . theme('pager', NULL, variable_get('default_nodes_main', 10));
+    else return t("No terms found.");
 }
 
 function vocabulary_form_taxonomy_form_vocabulary_alter(&$form, $form_state) {
