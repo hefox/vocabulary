@@ -53,6 +53,9 @@ function vocabulary_menu() {
 }
 
 /*Allow for autocomplete to have multiple vocabularies*/
+/*
+ * Implementation of hook_menu_alter
+*/
 function vocabulary_menu_alter(&$items) {
   $items['taxonomy/autocomplete']['page callback'] = 'vocabulary_taxonomy_autocomplete';
   unset($items['taxonomy/autocomplete']['file']);

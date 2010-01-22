@@ -1,0 +1,22 @@
+<?php
+/*
+ * Implementation of hook_menu_alter
+*/
+function vocabularyaccess_menu_alter(&$items) {
+  $items['taxonomy/%taxonomy_vocabulary']['access callback'] = 'vocabularyaccess_access_check';
+  $items['taxonomy/%taxonomy_vocabulary']['access arguments'] = array(1);
+}
+
+function vocabularyaccess_access_check($vocabulary) {
+  return (user_access('view all vocabulary pages') || user_access('view vocabulary page for ' . $vocabulary->vid));
+
+}
+
+function vocabularyaccess_perm() {
+  $result = db_query("SELECT vid from {vocabulary}");
+  $perms = array();
+  while ($row = db_fetch_object($result)) {
+    $perms[] = 'view vocabulary page for ' . $row->vid ;
+  }
+  return array('view all vocabulary pages') + $perms ;
+}

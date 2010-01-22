@@ -1,0 +1,4 @@
+name = Vocabulary Access
+description = This only adds per vocabulary permission to vocabulary's taxonomy/<vid> pages, just that. 
+core = 6.x
+dependancies[] = vocabulary
