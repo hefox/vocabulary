@@ -1,5 +1,0 @@
-name = Pretty taxonomy autocomplete Synonymies
-description = Alters returned rows to include matches to synonymies. 
-core = 6.x
-dependancies[] = taxonomy
-dependancies[] = prettyauto

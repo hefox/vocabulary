@@ -1,4 +1,0 @@
-name = Pretty taxonomy autocomplete
-description = Provides different autocomplete fields. 
-core = 6.x
-dependancies[] = taxonomy 
