@@ -52,41 +52,6 @@ function vocabulary_menu() {
   return $items;
 }
 
-/*Allow for autocomplete to have multiple vocabularies*/
-/*
- * Implementation of hook_menu_alter
-*/
-function vocabulary_menu_alter(&$items) {
-  $items['taxonomy/autocomplete']['page callback'] = 'vocabulary_taxonomy_autocomplete';
-  unset($items['taxonomy/autocomplete']['file']);
-}
-
-function vocabulary_taxonomy_autocomplete($vid, $string = '') {
-  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
-  $array = drupal_explode_tags($string);
-  $vocabs = explode(" ",$vid);
-  // Fetch last tag
-  $last_string = trim(array_pop($array));
-  $matches = array();
-  if ($last_string != '') {
-    $args = $vocabs;
-    $args[] = $last_string ;
-    $result = db_query_range(db_rewrite_sql("SELECT t.tid, t.name FROM {term_data} t WHERE t.vid in (".db_placeholders($vocabs).") AND LOWER(t.name) LIKE LOWER('%%%s%%')", 't', 'tid'), $args, 0, 10);
-
-    $prefix = count($array) ? implode(', ', $array) .', ' : '';
-
-    while ($tag = db_fetch_object($result)) {
-      $n = $tag->name;
-      // Commas and quotes in terms are special cases, so encode 'em.
-      if (strpos($tag->name, ',') !== FALSE || strpos($tag->name, '"') !== FALSE) {
-        $n = '"'. str_replace('"', '""', $tag->name) .'"';
-      }
-      $matches[$prefix . $n] = check_plain($tag->name);
-    }
-  }
-
-  drupal_json($matches);
-}
 
 function vocabulary_page_title($vocabulary) {
   return check_plain($vocabulary->name);
@@ -102,7 +67,7 @@ function vocabulary_page($vocabulary) {
       $results = pager_query(db_rewrite_sql('SELECT t.*, h.parent FROM {term_data} t INNER JOIN {term_hierarchy} h ON t.tid = h.tid WHERE t.vid = %d ORDER BY weight, name', 't', 'tid'), 50, 0, NULL, $vocabulary->vid);
     $total_entries = db_query(db_rewrite_sql('SELECT count(*) FROM {term_data} t INNER JOIN {term_hierarchy} h ON t.tid = h.tid WHERE t.vid = %d', 't', 'tid'), 50, 0, NULL, $vocabulary->vid);
     while ($term = db_fetch_object($results)) {
-      $output .= "<h3 class='term-name'>".l(check_plain($term->name),taxonomy_term_path($term))."</h3>" 
+      $output .= "<h3 class='term-name'>".l($term->name,taxonomy_term_path($term))."</h3>" 
         . "<div class='term-description'>".filter_xss($term->description)."</div>";
     }
     
