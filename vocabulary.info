@@ -1,4 +1,7 @@
 name = Vocabulary
 description = Additional vocabulary stuff
-core = 6.x
+version = VERSION
+core = 7.x
 dependancies[] = taxonomy 
+files[] = vocabulary.module
+files[] = vocabulary.pages.inc
