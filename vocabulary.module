@@ -42,7 +42,7 @@ function vocabulary_menu() {
  $items['taxonomy/%taxonomy_vocabulary/add'] = array(
     'title' => 'Add term',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('taxonomy_form_term', array(), 3),
+    'page arguments' => array('taxonomy_form_term', array(), 1),
     'access arguments' => array('administer taxonomy'),
     'type' => MENU_LOCAL_ACTION,
     'file' => 'taxonomy.admin.inc',
@@ -53,18 +53,109 @@ function vocabulary_menu() {
 
 
 function vocabulary_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
-  if (arg(0) == 'taxonomy' && arg(2)=='edit') $form['#submit'][] =  'vocabulary_taxonomy_form_vocabulary';
+  if (arg(0) == 'taxonomy' && arg(2)=='edit') $form['#submit'][] =  'vocabulary_taxonomy_form_vocabulary_direct';
+  field_attach_form('taxonomy_vocabulary', $form['#vocabulary'] , $form, $form_state);
 }
 
 function vocabulary_taxonomy_form_vocabulary($form, &$form_state) {
-  $form_state['values']['vid'];
   $form_state['redirect'] = 'taxonomy/'.$form_state['values']['vid'];
   return;
 }
 
+function vocabulary_taxonomy_vocabulary_update($vocabulary){
+  field_attach_update('taxonomy_vocabulary',$vocabulary);
+}
+function vocabulary_taxonomy_vocabulary_insert($vocabulary){
+  field_attach_insert('taxonomy_vocabulary',$vocabulary);
+}
+
+function taxonomy_vocabulary_view($vocabulary, $view_mode = 'full') {
+  field_attach_prepare_view('taxonomy_vocabulary', array($vocabulary->vid => $vocabulary), $view_mode);
+  entity_prepare_view('taxonomy_vocabulary', array($vocabulary->vid => $vocabulary));
+
+  $build = array(
+    '#theme' => 'taxonomy_vocabulary',
+    '#vocabulary' => $vocabulary,
+    '#view_mode' => $view_mode,
+  );
+
+  $build += field_attach_view('taxonomy_vocabulary', $vocabulary, $view_mode);
+
+  return $build;
+}
+
+
+function taxonomy_term_view_multiple($terms, $view_mode = 'teaser', $weight = 0) {
+  field_attach_prepare_view('taxonomy_term', $terms, $view_mode);
+  entity_prepare_view('taxonomy_term', $terms);
+  $build = array();
+  foreach ($terms as $term) {
+    $build['terms'][$term->tid] = taxonomy_term_view($term, $view_mode);
+    $build['terms'][$term->tid]['#weight'] = $weight;
+    $weight++;
+  }
+  $build['terms']['#sorted'] = TRUE;
+  return $build;
+}
+
+
 function vocabulary_entity_info_alter(&$entity_info)  {
   $entity_info['taxonomy_term']['view modes']['teaser']['label'] = t('Teaser');
+  $entity_info['taxonomy_vocabulary']['fieldable'] = TRUE;
+  /* Making vocalaries fieldable*/
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['label'] = t('Vocabulary');
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['admin']['path'] = 'admin/structure/taxonomy';
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['admin']['access arguments'] =  array('administer taxonomy');
+  
+  $entity_info['taxonomy_vocabulary']['view modes']['full']['label'] = t('Full');
 }
+
+/**
+ * Implements hook_theme().
+ */
+function vocabulary_theme() {
+  return array(
+    'taxonomy_vocabulary' => array(
+      'render element' => 'elements',
+      'template' => 'taxonomy-vocabulary',
+    ),
+  );
+}
+
+function template_preprocess_taxonomy_vocabulary(&$variables) {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  $variables['vocabulary'] = $variables['elements']['#vocabulary'];
+  $vocabulary = $variables['vocabulary'];
+
+  $variables['vocabulary_url']  = url('taxonomy/' . $vocabulary->vid);
+  $variables['vocabulary_name'] = check_plain($vocabulary->name);
+  $variables['page']      = taxonomy_vocabulary_is_page($vocabulary);
+
+  // Flatten the term object's member fields.
+  $variables = array_merge((array)$vocabulary, $variables);
+
+  // Helpful $content variable for templates.
+  foreach (element_children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+
+  // field_attach_preprocess() overwrites the $[field_name] variables with the
+  // values of the field in the language that was selected for display, instead
+  // of the raw values in $term->[field_name], which contain all values in all
+  // languages.
+  field_attach_preprocess('taxonomy_vocabulary', $vocabulary, $variables['content'], $variables);
+  // Gather classes.
+  $variables['classes_array'][] = 'vocabulary-' . $vocabulary->machine_name;
+
+  // Clean up name so there are no underscores.
+  $variables['theme_hook_suggestions'][] = 'taxonomy-vocabulary__' . $vocabulary->machine_name;
+}
+
+function taxonomy_vocabulary_is_page($vocabulary) {
+  $page_vocabulary = menu_get_object('taxonomy_vocabulary', 1);
+  return (!empty($page_vocabulary) ? $page_vocabulary->vid == $vocabulary->vid : FALSE);
+}
+
 
 /* token stuff */
 /*
