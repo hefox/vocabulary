@@ -1,7 +1,0 @@
-name = Vocabulary Fields
-description = Make vocabularies fieldable
-version = VERSION
-core = 7.x
-dependancies[] = taxonomy 
-files[] = vocabularyfields.module
-files[] = vocabularyfields.pages.inc
