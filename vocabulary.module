@@ -160,40 +160,105 @@ function taxonomy_vocabulary_is_page($vocabulary) {
 /* token stuff */
 /*
  * Implementation of hook_token_values
- 
+ */ 
 
-function vocabulary_token_values($type, $object = NULL) {
-
-  $values = array();
-
-  switch ($type) {
-    case 'vocabulary':
-      $values['vid'] = $object->vid;
-      $values['vocab'] = check_plain($object->name);
-      $values['vocab-raw'] = $object->name;
-      break;
+function vocabulary_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $sanitize = !empty($options['sanitize']);
+  $url_options = array('absolute' => TRUE);
+  if (isset($options['language'])) {
+    $url_options['language'] = $options['language'];
+    $language_code = $options['language']->language;
   }
-  return $values;
+  else {
+    $language_code = NULL;
+  }
+  
+  $replacements = array();
+
+  if ($type == 'vocabulary' && !empty($data['vocabulary'])) {
+    $vocabulary = $data['vocabulary'];
+
+    foreach ($tokens as $name => $original) {
+      switch ($name) {
+        // Simple key values on the node.
+
+        case 'machine-name':
+          $replacements[$original] = $sanitize ? check_plain($vocabulary->machine_name) : $vocabulary->machine_name;
+          break;
+          
+        case 'edit-url':
+          $replacements[$original] = url('admin/structure/taxonomy/' . $vocabulary->vid . '/edit', $url_options);
+          break;
+
+        case 'list-url':
+          $replacements[$original] = url('admin/structure/taxonomy/' . $vocabulary->vid . '/list', $url_options);
+          break;
+
+        case 'add-url':
+          $replacements[$original] = url('admin/structure/taxonomy/' . $vocabulary->vid . '/add', $url_options);
+          break;
+          
+        case 'short-edit-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/edit', $url_options);
+          break;
+
+        case 'short-list-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/list', $url_options);
+          break;
+
+        case 'short-add-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/add', $url_options);
+          break;
+      }
+    }
+  }
+  
+  return $replacements;
 }
+
 /*
  * Implementation of hook_token_list
- 
-function vocabulary_token_list($type = 'all') {
-  $tokens = array();
-    if ($type == 'vocabulary' || $type == 'all') {
-      $tokens['vocabulary']['vid'] = t('Vocabulary vid.');
-      $tokens['vocabulary']['vocab-raw'] = t('Raw vocabulary name.');
-      $tokens['vocabulary']['vocab'] = t('Vocabulary name.');
-    }
+ */
+function vocabulary_token_info() {
 
-  return $tokens;
+  $vocabulary['edit-url'] = array(
+    'name' => t("Edit URL"),
+    'description' => t("The URL of the vocabulary's edit page."),
+  );
+  
+  $vocabulary['list-url'] = array(
+    'name' => t("List URL"),
+    'description' => t("The URL of the node's List page."),
+  );
+
+  $vocabulary['add-url'] = array(
+    'name' => t("Add URL"),
+    'description' => t("The URL of the node's edit page."),
+  );
+  
+  $vocabulary['short-edit-url'] = array(
+    'name' => t("Short Edit URL"),
+    'description' => t("The URL of the vocabulary's edit page as provided by vocabulary module."),
+  );
+  
+  $vocabulary['short-list-url'] = array(
+    'name' => t("Short List URL"),
+    'description' => t("The URL of the node's List page as provided by vocabulary module."),
+  );
+
+  $vocabulary['short-add-url'] = array(
+    'name' => t("Short Add URL"),
+    'description' => t("The URL of the node's edit page as provided by vocabulary module."),
+  );
+  
+  return array(
+    'tokens' => array('vocabulary' => $vocabulary),
+  );
 }
-/*
- * Pathauto stuff
- *
+
 /*
  * Implementation of hook_pathauto
- *
+ */
 function vocabulary_pathauto($op) {
   switch ($op) {
     case 'settings':
@@ -201,16 +266,14 @@ function vocabulary_pathauto($op) {
       $settings['module'] = 'vocabulary';
       $settings['token_type'] = 'vocabulary';
       $settings['groupheader'] = t('Vocabulary path settings');
-      $settings['patterndefault'] = t('category/[vocab-raw]');
-      $patterns = token_get_list('vocabulary');
-      foreach ($patterns as $type => $pattern_set) {
-        if ($type != 'global') {
-          foreach ($pattern_set as $pattern => $description) {
-            $settings['placeholders']['['. $pattern .']'] = $description;
-          }
-        }
+      $settings['patterndefault'] = t('category/[vocabulary:name]');
+      $settings['patterndescr'] = t('Path pattern for vocabularies');
+      
+      $tokens = token_info();
+      foreach ($tokens['tokens']['vocabulary'] as $key => $info) {
+        $settings['tokens']["[vocabulary:$key]"] = $info['description'];
       }
-      $settings['supportsfeeds'] = '0/feed';
+      $settings['supportsfeeds'] = '';
       $settings['bulkname'] = t('Bulk generate aliases for vocabularies that are not aliased');
       $settings['bulkdescr'] = t('Generate aliases for all existing vocabularies which do not already have aliases.');
 
@@ -222,8 +285,9 @@ function vocabulary_pathauto($op) {
 
 
 /**
- * Generate aliases for all nodes without aliases.
+ * Generate aliases for all vocabularies without aliases.
  *
+ */
 function vocabulary_pathauto_bulkupdate() {
   // From all node types, only attempt to update those with patterns
   // If there's a default pattern we assume all types might be updated.
@@ -233,8 +297,7 @@ function vocabulary_pathauto_bulkupdate() {
   $placeholders = array();
   $count = 0;
   foreach($vocabularies as $vocabulary) {
-    $placeholders = pathauto_get_placeholders('vocabulary', $vocabulary);
-    if (pathauto_create_alias('vocabulary', 'bulkupdate', $placeholders, "taxonomy/$vocabulary->vid", $vocabulary->vid)) {
+     if (pathauto_create_alias('vocabulary', 'bulkupdate', "taxonomy/$vocabulary->vid", array('vocabulary' => $vocabulary))) {
       $count++;
     }
    } 
